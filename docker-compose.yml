@@ -13,13 +13,9 @@ services:
       context: app1
       dockerfile: DockerfileHorrible
     container_name: app1_lab
-    ports:
-      - "7001:7001"
 
   app2:
     build:
       context: app2
       dockerfile: DockerfileHorrible
     container_name: app2_lab
-    ports:
-      - "7002:7002"
