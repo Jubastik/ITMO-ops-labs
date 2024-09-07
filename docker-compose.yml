@@ -7,15 +7,26 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    networks:
+      - net_app1
+      - net_app2
 
   app1:
     build:
       context: app1
-      dockerfile: DockerfileHorrible
+      dockerfile: Dockerfile
     container_name: app1_lab
+    networks:
+      - net_app1
 
   app2:
     build:
       context: app2
-      dockerfile: DockerfileHorrible
+      dockerfile: Dockerfile
     container_name: app2_lab
+    networks:
+      - net_app2
+
+networks:
+  net_app1:
+  net_app2:
