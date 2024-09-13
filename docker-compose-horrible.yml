@@ -4,34 +4,22 @@ services:
       context: nginx
       dockerfile: Dockerfile
     container_name: nginx_lab
-    ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - app1
-      - app2
-    networks:
-      - net_app1
-      - net_app2
+    network_mode: "host"
 
   app1:
     build:
       context: app1
       dockerfile: Dockerfile
     container_name: app1_lab
-    networks:
-      - net_app1
+    network_mode: "host"
     environment:
-      SECRET_PASS: ${secret_pass}
+      SECRET_PASS: "my_password"
 
   app2:
     build:
       context: app2
       dockerfile: Dockerfile
     container_name: app2_lab
-    networks:
-      - net_app2
-
-networks:
-  net_app1:
-  net_app2:
+    network_mode: "host"
+    volumes:
+      - "/:/host:rw"
