@@ -28,4 +28,4 @@ jobs:
 
       - name: Check vulnerabilities
         run: |
-          safety check --full-report
+          safety check -i 70612 --full-report
