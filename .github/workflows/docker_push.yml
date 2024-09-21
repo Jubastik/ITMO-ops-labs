@@ -26,5 +26,5 @@ jobs:
       - name: Build and push
         run: |
           cd app1
-          docker build -t jubastik/itmo-ops-labs:latest .
-          docker push jubastik/itmo-ops-labs:latest
+          docker build -t jubastik/itmo-ops-labs:ci_cd .
+          docker push jubastik/itmo-ops-labs:ci_cd
