@@ -9,7 +9,6 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    needs: [ security, lint ]
 
     steps:
       - name: Checkout code
