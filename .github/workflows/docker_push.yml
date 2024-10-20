@@ -3,12 +3,13 @@ name: Build and Push Docker Image
 on:
   push:
     branches:
-      - main
       - CI/CD
 
 jobs:
   build:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: [ security, lint ]
 
     steps:
       - name: Checkout code
