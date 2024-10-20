@@ -8,10 +8,11 @@
 3. Nginx  
    3.1 Описание  
    3.2 nginx.conf  
-   3.3 https
+   3.3 https  
+   3.4 Код
 
 4. Запуск
-5. Используемые ресурсы
+6. Используемые ресурсы
 
 ## 1. Краткое описание
 
@@ -52,6 +53,8 @@ docker run -p 7001:7001 app1
 
 Для app2 используется порт 7002. Остальное аналогично.
 
+![Запуск приложений](img/l1_start.png)
+
 ## 3. Nginx
 
 ### 3.1 Описание
@@ -62,13 +65,14 @@ docker run -p 7001:7001 app1
 ### 3.2 nginx.conf
 
 Конфигурация была написана с нуля. Сервер слушающий 80 порт возвращает редирект на 443. Тем самым обеспечивается
-принудительное использование https.
+принудительное использование https. Эта минимальная конфигурация. В зависимости от требований, можно добавлять
+кэширование, улучшать безопасность и много чего другого веселого.
 
 Существует два location:
 
 - Первый location обрабатывает запросы к /app1 и перенаправляет их на http://app1:7001.
 - Второй location обрабатывает запросы к /app2 и перенаправляет их на http://app2:7002.
-  app1 и app2 - адреса приложений в сети созданной Docker-compose. Приложения извне недоступны
+  app1 и app2 - адреса приложений в сети созданной Docker-compose. Приложения извне недоступны.
 
 ### 3.3 https
 
@@ -98,6 +102,44 @@ openssl req -new -x509 -key nginx.key -out nginx.crt -days 365
 - out - файл для записи сертификата
 - days - срок действия сертификата
 
+### 3.4 Код
+
+```nginx
+http {
+
+    include      mime.types;
+
+    upstream app1 {
+        server app1:7001;
+    }
+
+    upstream app2 {
+        server app2:7002;
+    }
+
+    server {
+        listen 443 ssl;
+        ssl_certificate /etc/nginx/ssl/nginx.crt;
+        ssl_certificate_key /etc/nginx/ssl/nginx.key;
+        root /usr/share/nginx/html;
+
+        location /app1 {
+            proxy_pass http://app1/;
+        }
+
+        location /app2 {
+            proxy_pass http://app2/;
+        }
+    }
+    server {
+        listen 80;
+        return 301 https://$host$request_uri;
+    }
+}
+
+events {}
+```
+
 ## 4 Запуск
 
 Для запуска используется docker-compose.
@@ -111,6 +153,11 @@ docker-compose up
 http://localhost вызовет редирект на https://localhost.
 
 alias в лабораторной работе не используется, так как nginx используется как реверс прокси, а не в режиме статик сервера.
+
+![Запуск](img/l1_nginx.png)
+
+![app1](img/l1_nginx_app1.png)
+![app2](img/l1_nginx_app2.png)
 
 ## 5. Используемые ресурсы
 

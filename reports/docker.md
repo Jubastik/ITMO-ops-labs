@@ -7,7 +7,8 @@
    2.3 Настройка Python с помощью ENV переменных  
    2.4 Использование "слоистости" python  
    2.5 Двухэтапная сборка  
-   2.6 .dockerignore
+   2.6 .dockerignore  
+   2.7 Код
 3. Настройка сети docker-compose
 4. Bad practices при работе с "хорошими" Dockerfile
 5. Bad practices docker-compose  
@@ -16,7 +17,8 @@
    5.3 Избыточное монтирование volume  
    5.4 "Хардкод" environment
    5.5 Игнорирование depends_on
-6. Используемые ресурсы
+6. Картинки
+7. Используемые ресурсы
 
 ## 1. Краткое описание
 
@@ -66,20 +68,93 @@ Best practices использованы в файле "Dockerfile".
 
 Также двухэтапная сборка помогает лучше использовать слоистость Docker.
 
+P.S. Если используются либы с cpython, например связанные с ML, то двухэтапная сборка может быть так же полезна как
+компилируемым языкам.
+
 ### 2.6 .dockerignore
 
 Файл .dockerignore позволяет игнорировать при копировании файлы и папки, которые не нужны.
+
+### 2.7 Код
+
+```dockerfile
+FROM python:3.12-slim-bookworm as build
+
+WORKDIR /usr/app
+
+# Отключение создания файлов .pyc
+ENV PYTHONDONTWRITEBYTECODE 1
+# Отключение буферизации вывода. Гарантия логов в реальноми времени
+ENV PYTHONUNBUFFERED 1
+
+RUN python -m venv /usr/app/venv
+ENV PATH="/usr/app/venv/bin:$PATH"
+
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+FROM python:3.12-slim-bookworm
+
+WORKDIR /usr/app
+COPY --from=build /usr/app/venv ./venv
+COPY . .
+
+ENV PATH="/usr/app/venv/bin:$PATH"
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7001"]
+```
 
 ## 3. Настройка сети docker-compose
 
 В существующий docker-compose были добавлены 2 сети: net_app1 и net_app2. Nginx добавлен в обе, app1 и app2 только в
 свои сети.
 
+```dockerfile
+services:
+  nginx:
+    build:
+      context: nginx
+      dockerfile: Dockerfile
+    container_name: nginx_lab
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - app1
+      - app2
+    networks:
+      - net_app1
+      - net_app2
+
+  app1:
+    build:
+      context: app1
+      dockerfile: Dockerfile
+    container_name: app1_lab
+    networks:
+      - net_app1
+    environment:
+      SECRET_PASS: ${secret_pass}
+
+  app2:
+    build:
+      context: app2
+      dockerfile: Dockerfile
+    container_name: app2_lab
+    networks:
+      - net_app2
+
+networks:
+  net_app1:
+  net_app2:
+```
+
 ## 4. Bad practices при работе с "хорошими" Dockerfile
 
 - Не давать имя контейнеру. Тем самым усложняется работа с ним
 - Постоянное использование --no-cache. Это приводит к тому, что кэш не используется, это увеличивает время
   сборки
+- Залезать ручками в контейнер и редактировать что-либо. Только для дебага, иначе бан. 
 
 ## 5. Bad practices docker-compose
 
@@ -110,7 +185,10 @@ docker-compose-horrible.yml
 Хоть depends_on и не гарантирует, что сервис будет готов к работе, однако это лучше чем ничего. По-хорошему с depends_on
 надо использовать специальные скрипты для проверки готовности сервиса.
 
-## 6. Используемые ресурсы
+## 6. Картинки
+![It's works](img/l1_nginx.png)
+
+## 7. Используемые ресурсы
 
 - https://habr.com/ru/companies/wunderfund/articles/586778/
 - https://snyk.io/blog/best-practices-containerizing-python-docker/
