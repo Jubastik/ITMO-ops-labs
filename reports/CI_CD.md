@@ -10,6 +10,7 @@
    3.3 Оптимизация триггеров  
    3.4 Описание для шагов  
    3.5 Таймауты
+4. Внешнее хранилище секретов
 
 ## 1. Краткое описание
 
@@ -125,14 +126,24 @@ name: Build and Push Docker Image
 on:
   push:
     branches:
-      - main
       - CI/CD
 
 jobs:
   build:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
 
     steps:
+      - name: Bitwarden secrets
+        uses: bitwarden/sm-action@v2
+        with:
+          access_token: ${{ secrets.BW_ACCESS_TOKEN }}
+          base_url: https://vault.bitwarden.com
+          secrets: |
+            c7ba33b0-14d6-4aae-9c06-b20f010dab86 > DOCKERHUB_USERNAME
+            7998fe1d-dcc5-4613-ac5d-b20f010cb5ed > DOCKERHUB_TOKEN
+
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -142,14 +153,15 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
 
       - name: Build and push
         run: |
           cd app1
           docker build -t jubastik/itmo-ops-labs:ci_cd .
           docker push jubastik/itmo-ops-labs:ci_cd
+
 ```
 
 Удачный пуш:
@@ -245,3 +257,45 @@ steps:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
 ```
+
+## 4. Внешнее хранилище секретов
+
+Хранение секретов во внешнем хранилище (далее хранилище) имеет много преимуществ по сравнению с хранением в переменных
+CI/CD.  
+И нет, хранилище не безопаснее переменных CI/CD, если секреты утекают через уязвимость в приложении. Их так же можно
+прочитать через переменные окружения. Однако:
+
+- Хранилище позволяет гибко настраивать доступ к секретам. Можно создать множество групп, пользователей, токенов
+  доступа. Это позволяет выдавать минимально необходимую информацию конечному приложению.
+- Хранилища благодаря гибкой настройки позволяют автоматизировать обновление секретов. Даже если секрет утек, то через
+  некоторое время он будет обнулен и заменен на новый. Причем на стороне пользователя секрета ничего делать не надо.
+- Хранилища могут быть запущены внутри корпоративного контура. Это в купе с локальными CI/CD ранером позволяет
+  минимизировать риски утечки секретов через уязвимости GitHub. Так же в некоторых компаниях запрещено хранить секюрную
+  информацию в "облаке".
+- Популярные хранилища имеют большое количество интеграций. Это удобно.
+
+Я использовал Bitwarden. Популярное open-source хранилище секретов. Благодаря удобной интеграции с Github Actions
+подключить его не составило труда. Надо только добавить Bitwarden токен в CI/CD секреты.
+
+Код:
+
+```yaml
+- name: Bitwarden secrets
+  uses: bitwarden/sm-action@v2
+  with:
+    access_token: ${{ secrets.BW_ACCESS_TOKEN }}
+    base_url: https://vault.bitwarden.com
+    secrets: |
+      c7ba33b0-14d6-4aae-9c06-b20f010dab86 > DOCKERHUB_USERNAME
+      7998fe1d-dcc5-4613-ac5d-b20f010cb5ed > DOCKERHUB_TOKEN
+```
+
+Необходимые переменные можно получить так:
+
+```yaml
+with:
+  username: ${{ env.DOCKERHUB_USERNAME }}
+  password: ${{ env.DOCKERHUB_TOKEN }}
+```
+
+![Bitwarden](img/l3_bitwarden.png)
